@@ -1,35 +1,32 @@
 import boto3
 from botocore.exceptions import ClientError
 import argparse
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import credentials
 
 def publish_message(message, topic_name, region=None, subject=None):
     try:
         sns_client = boto3.client('sns', region_name=region) if region else boto3.client('sns')
-
         topics_response = sns_client.list_topics()
         topic_arn = None
-
         for topic in topics_response.get('Topics', []):
             arn = topic['TopicArn']
             if arn.split(':')[-1] == topic_name:
                 topic_arn = arn
                 break
-
         if not topic_arn:
             return None
-
         publish_params = {
             'TopicArn': topic_arn,
             'Message': message
         }
-
         if subject:
             publish_params['Subject'] = subject
-
         response = sns_client.publish(**publish_params)
         return response
-
     except ClientError:
         return None
 
