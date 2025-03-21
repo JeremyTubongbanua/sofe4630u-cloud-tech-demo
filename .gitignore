@@ -1,2 +1,3 @@
 rootkey.csv
 .DS_STORE
+__pycache__
