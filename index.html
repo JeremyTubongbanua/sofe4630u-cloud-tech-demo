@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        select, button {
+            padding: 12px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-input-button {
+            display: block;
+            padding: 12px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+        }
+        #file-name {
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .status {
+            margin-top: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .transcript-container {
+            margin-top: 30px;
+            display: none;
+        }
+        .transcript {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Transcription Service</h1>
+        
+        <div class="form-group">
+            <label for="file-upload">Select Audio File (.m4a)</label>
+            <div class="file-input-wrapper">
+                <div class="file-input-button">Choose File</div>
+                <input type="file" id="file-upload" accept=".m4a" />
+            </div>
+            <div id="file-name">No file selected</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="language-select">Select Language</label>
+            <select id="language-select">
+                <option value="">Loading languages...</option>
+            </select>
+        </div>
+        
+        <button id="transcribe-button" disabled>Transcribe Audio</button>
+        
+        <div class="progress-container" id="progress-container">
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            <div class="status" id="status">Uploading...</div>
+        </div>
+        
+        <div class="error" id="error-message"></div>
+        
+        <div class="transcript-container" id="transcript-container">
+            <h2>Transcription Result</h2>
+            <div class="transcript" id="transcript-text"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const API_URL = 'http://127.0.0.1:5000/api';
+            const fileUpload = document.getElementById('file-upload');
+            const fileName = document.getElementById('file-name');
+            const languageSelect = document.getElementById('language-select');
+            const transcribeButton = document.getElementById('transcribe-button');
+            const progressContainer = document.getElementById('progress-container');
+            const progress = document.getElementById('progress');
+            const status = document.getElementById('status');
+            const errorMessage = document.getElementById('error-message');
+            const transcriptContainer = document.getElementById('transcript-container');
+            const transcriptText = document.getElementById('transcript-text');
+
+            fetch(`${API_URL}/languages`)
+                .then(response => response.json())
+                .then(languages => {
+                    languageSelect.innerHTML = '';
+                    languages.forEach(lang => {
+                        const option = document.createElement('option');
+                        option.value = lang.code;
+                        option.textContent = lang.name;
+                        languageSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading languages:', error);
+                    errorMessage.textContent = 'Failed to load language options. Please check if the backend server is running.';
+                    errorMessage.style.display = 'block';
+                });
+            
+            fileUpload.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileName.textContent = this.files[0].name;
+                    transcribeButton.disabled = false;
+                } else {
+                    fileName.textContent = 'No file selected';
+                    transcribeButton.disabled = true;
+                }
+            });
+            
+            transcribeButton.addEventListener('click', function() {
+                if (!fileUpload.files || !fileUpload.files[0]) {
+                    return;
+                }
+                
+                const file = fileUpload.files[0];
+                const language = languageSelect.value;
+                
+                // Reset UI
+                errorMessage.style.display = 'none';
+                transcriptContainer.style.display = 'none';
+                progressContainer.style.display = 'block';
+                progress.style.width = '10%';
+                status.textContent = 'Uploading file...';
+                transcribeButton.disabled = true;
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('language', language);
+                
+                // Start animation for progress bar
+                let progressValue = 10;
+                const progressInterval = setInterval(() => {
+                    if (progressValue < 90) {
+                        progressValue += 5;
+                        progress.style.width = `${progressValue}%`;
+                        
+                        if (progressValue > 15 && progressValue < 30) {
+                            status.textContent = 'Uploading to AWS S3...';
+                        } else if (progressValue >= 30 && progressValue < 50) {
+                            status.textContent = 'Starting transcription job...';
+                        } else if (progressValue >= 50 && progressValue < 80) {
+                            status.textContent = 'Transcribing audio...';
+                        } else if (progressValue >= 80) {
+                            status.textContent = 'Retrieving transcript...';
+                        }
+                    }
+                }, 3000);
+                
+                fetch(`${API_URL}/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    clearInterval(progressInterval);
+                    
+                    if (data.success) {
+                        progress.style.width = '100%';
+                        status.textContent = 'Transcription completed!';
+                        
+                        transcriptText.textContent = data.transcript;
+                        transcriptContainer.style.display = 'block';
+                    } else {
+                        throw new Error(data.error || 'Failed to transcribe audio');
+                    }
+                })
+                .catch(error => {
+                    clearInterval(progressInterval);
+                    progressContainer.style.display = 'none';
+                    errorMessage.textContent = `Error: ${error.message}`;
+                    errorMessage.style.display = 'block';
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        transcribeButton.disabled = false;
+                        if (!errorMessage.style.display || errorMessage.style.display === 'none') {
+                            progressContainer.style.display = 'none';
+                        }
+                    }, 2000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
