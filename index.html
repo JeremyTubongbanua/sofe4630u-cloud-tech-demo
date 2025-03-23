@@ -211,7 +211,6 @@
                 const file = fileUpload.files[0];
                 const language = languageSelect.value;
                 
-                // Reset UI
                 errorMessage.style.display = 'none';
                 transcriptContainer.style.display = 'none';
                 progressContainer.style.display = 'block';
@@ -219,12 +218,10 @@
                 status.textContent = 'Uploading file...';
                 transcribeButton.disabled = true;
                 
-                // Create form data
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('language', language);
                 
-                // Start animation for progress bar
                 let progressValue = 10;
                 const progressInterval = setInterval(() => {
                     if (progressValue < 90) {

@@ -14,20 +14,18 @@ CORS(app)
 UPLOAD_FOLDER = 'temp_uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024  # 64MB max
+app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 
 def transcribe_audio(file_path, language_code='en-US'):
     access_key_id, secret_access_key = read_credentials.get_aws_credentials()
     bucket_name = 'cloud-transcribe-meow'
     region = 'us-east-2'
-    
     s3_client = boto3.client(
         's3',
         aws_access_key_id=access_key_id,
         aws_secret_access_key=secret_access_key,
         region_name=region
     )
-    
     transcribe_client = boto3.client(
         'transcribe',
         aws_access_key_id=access_key_id,
@@ -130,10 +128,10 @@ def transcribe():
         
         try:
             result = transcribe_audio(file_path, language_code)
-            os.remove(file_path)  # Remove temporary file
+            os.remove(file_path)
             return jsonify(result)
         except Exception as e:
-            os.remove(file_path)  # Remove temporary file
+            os.remove(file_path)
             return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
